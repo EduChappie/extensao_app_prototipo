@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f2ee;
+    --surface: #ffffff;
+    --text: #1a1a1a;
+    --muted: #888;
+    --border: #e0dbd4;
+    --correct: #2d7a4f;
+    --correct-bg: #edf7f1;
+    --wrong: #b93a3a;
+    --wrong-bg: #fdf0f0;
+    --fisica: #2563b0;
+    --matematica: #7c3aed;
+    --quimica: #0d7966;
+    --portugues: #b45309;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .screen { display: none; width: 100%; max-width: 520px; }
+  .screen.active { display: block; }
+
+  /* HOME */
+  .home-header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .home-header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 8vw, 2.8rem);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .home-header p {
+    color: var(--muted);
+    margin-top: 8px;
+    font-size: 0.95rem;
+  }
+
+  .subject-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .subject-btn {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 16px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .subject-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+  .subject-btn:active { transform: translateY(0); }
+
+  .subject-btn .icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .subject-btn .label {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .subject-btn .count {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .subject-btn[data-subject="fisica"] { border-color: #c7dbf5; }
+  .subject-btn[data-subject="fisica"]:hover { border-color: var(--fisica); }
+  .subject-btn[data-subject="matematica"] { border-color: #ddd5f9; }
+  .subject-btn[data-subject="matematica"]:hover { border-color: var(--matematica); }
+  .subject-btn[data-subject="quimica"] { border-color: #c2e8e1; }
+  .subject-btn[data-subject="quimica"]:hover { border-color: var(--quimica); }
+  .subject-btn[data-subject="portugues"] { border-color: #f5dfc1; }
+  .subject-btn[data-subject="portugues"]:hover { border-color: var(--portugues); }
+
+  /* QUIZ */
+  .quiz-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .back-btn {
+    background: none;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .back-btn:hover { background: var(--border); }
+
+  .quiz-meta { flex: 1; }
+  .quiz-subject {
+    font-weight: 600;
+    font-size: 0.88rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .quiz-progress-text {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 99px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+    background: var(--accent, #1a1a1a);
+  }
+
+  .question-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .question-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.05rem, 4vw, 1.2rem);
+    line-height: 1.5;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+
+  .option-btn {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .option-btn:hover:not(:disabled) {
+    border-color: #aaa;
+    transform: translateX(2px);
+  }
+  .option-btn:disabled { cursor: default; transform: none; }
+
+  .option-letter {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .option-btn.correct {
+    border-color: var(--correct);
+    background: var(--correct-bg);
+  }
+  .option-btn.correct .option-letter {
+    background: var(--correct);
+    color: white;
+  }
+  .option-btn.wrong {
+    border-color: var(--wrong);
+    background: var(--wrong-bg);
+  }
+  .option-btn.wrong .option-letter {
+    background: var(--wrong);
+    color: white;
+  }
+
+  .feedback-msg {
+    margin-top: 14px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    min-height: 20px;
+    transition: opacity 0.2s;
+  }
+  .feedback-msg.correct { color: var(--correct); }
+  .feedback-msg.wrong { color: var(--wrong); }
+
+  /* RESULT */
+  .result-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 28px;
+    text-align: center;
+  }
+  .result-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .result-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.5rem, 6vw, 2rem);
+    margin-bottom: 8px;
+  }
+  .result-score {
+    font-size: clamp(2.5rem, 10vw, 3.5rem);
+    font-weight: 600;
+    line-height: 1;
+    margin: 20px 0 8px;
+    color: var(--accent, #1a1a1a);
+  }
+  .result-label { color: var(--muted); font-size: 0.9rem; }
+
+  .result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 28px;
+  }
+  .btn-primary {
+    background: var(--text);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+  .btn-secondary {
+    background: none;
+    color: var(--text);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-secondary:hover { background: var(--bg); }
+
+  @media (max-width: 360px) {
+    .subject-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .subject-btn { padding: 20px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="home-header">
+    <h1>Quantum</h1>
+    <p>Escolha uma matéria para começar</p>
+  </div>
+  <div class="subject-grid">
+    <button class="subject-btn" data-subject="fisica" onclick="startQuiz('fisica')">
+      <span class="icon">⚛️</span>
+      <div class="label">Física</div>
+      <div class="count">4 questões</div>
+    </button>
+    <button class="subject-btn" data-subject="matematica" onclick="startQuiz('matematica')">
+      <span class="icon">📐</span>
+      <div class="label">Matemática</div>
+      <div class="count">4 questões</div>
+    </button>
+    <button class="subject-btn" data-subject="quimica" onclick="startQuiz('quimica')">
+      <span class="icon">🧪</span>
+      <div class="label">Química</div>
+      <div class="count">4 questões</div>
+    </button>
+    <button class="subject-btn" data-subject="portugues" onclick="startQuiz('portugues')">
+      <span class="icon">📖</span>
+      <div class="label">Português</div>
+      <div class="count">4 questões</div>
+    </button>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="screen">
+  <div class="quiz-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="quiz-meta">
+      <div class="quiz-subject" id="quiz-subject-label"></div>
+      <div class="quiz-progress-text" id="quiz-progress-text"></div>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="question-card">
+    <p class="question-text" id="question-text"></p>
+  </div>
+  <div class="options" id="options"></div>
+  <div class="feedback-msg" id="feedback-msg"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result" class="screen">
+  <div class="result-card">
+    <div class="result-emoji" id="result-emoji"></div>
+    <div class="result-title" id="result-title"></div>
+    <div class="result-score" id="result-score"></div>
+    <div class="result-label" id="result-label"></div>
+    <div class="result-actions">
+      <button class="btn-primary" id="retry-btn" onclick="retryQuiz()">Tentar novamente</button>
+      <button class="btn-secondary" onclick="goHome()">Outras matérias</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = {
+  fisica: [
+    {
+      q: "Qual é a unidade de medida de força no Sistema Internacional?",
+      options: ["Joule", "Pascal", "Newton", "Watt"],
+      answer: 2
+    },
+    {
+      q: "Um objeto em repouso tende a permanecer em repouso. Essa é qual lei de Newton?",
+      options: ["Segunda Lei", "Lei da Gravitação", "Terceira Lei", "Primeira Lei"],
+      answer: 3
+    },
+    {
+      q: "Qual é a velocidade da luz no vácuo, aproximadamente?",
+      options: ["150.000 km/s", "300.000 km/s", "450.000 km/s", "1.000.000 km/s"],
+      answer: 1
+    },
+    {
+      q: "A fórmula E = mc² foi proposta por qual físico?",
+      options: ["Isaac Newton", "Niels Bohr", "Albert Einstein", "Max Planck"],
+      answer: 2
+    }
+  ],
+  matematica: [
+    {
+      q: "Qual é o resultado de 2³ + √16?",
+      options: ["10", "12", "14", "16"],
+      answer: 1
+    },
+    {
+      q: "Uma progressão aritmética tem primeiro termo 3 e razão 4. Qual é o quinto termo?",
+      options: ["15", "17", "19", "21"],
+      answer: 2
+    },
+    {
+      q: "Qual é a soma dos ângulos internos de um triângulo?",
+      options: ["90°", "180°", "270°", "360°"],
+      answer: 1
+    },
+    {
+      q: "O número π (pi) é aproximadamente igual a:",
+      options: ["2,71", "3,14", "1,41", "1,73"],
+      answer: 1
+    }
+  ],
+  quimica: [
+    {
+      q: "Qual é o símbolo químico do ouro?",
+      options: ["Or", "Go", "Au", "Ag"],
+      answer: 2
+    },
+    {
+      q: "Quantos elementos existem na tabela periódica atualmente?",
+      options: ["108", "112", "118", "124"],
+      answer: 2
+    },
+    {
+      q: "A fórmula química da água é:",
+      options: ["HO", "H₂O", "H₂O₂", "OH"],
+      answer: 1
+    },
+    {
+      q: "O pH de uma solução neutra é:",
+      options: ["0", "5", "7", "14"],
+      answer: 2
+    }
+  ],
+  portugues: [
+    {
+      q: "Qual figura de linguagem consiste na comparação explícita usando conectivos como 'como' ou 'tal qual'?",
+      options: ["Metáfora", "Metonímia", "Comparação (Símile)", "Hipérbole"],
+      answer: 2
+    },
+    {
+      q: "Qual é o sujeito da oração: 'Os alunos estudaram muito para a prova.'?",
+      options: ["Estudaram muito", "Os alunos", "Para a prova", "Muito"],
+      answer: 1
+    },
+    {
+      q: "O vocábulo 'Saudade' é um exemplo de que classe gramatical?",
+      options: ["Verbo", "Adjetivo", "Advérbio", "Substantivo"],
+      answer: 3
+    },
+    {
+      q: "Em qual período literário brasileiro foi escrito 'O Cortiço', de Aluísio Azevedo?",
+      options: ["Romantismo", "Modernismo", "Naturalismo", "Barroco"],
+      answer: 2
+    }
+  ]
+};
+
+const SUBJECT_INFO = {
+  fisica:     { label: "Física",      color: "#2563b0", emoji: "⚛️" },
+  matematica: { label: "Matemática",  color: "#7c3aed", emoji: "📐" },
+  quimica:    { label: "Química",     color: "#0d7966", emoji: "🧪" },
+  portugues:  { label: "Português",   color: "#b45309", emoji: "📖" }
+};
+
+let currentSubject = null;
+let currentQ = 0;
+let score = 0;
+let answered = false;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goHome() {
+  show('home');
+}
+
+function startQuiz(subject) {
+  currentSubject = subject;
+  currentQ = 0;
+  score = 0;
+  answered = false;
+  const info = SUBJECT_INFO[subject];
+  document.documentElement.style.setProperty('--accent', info.color);
+  document.getElementById('quiz-subject-label').textContent = info.label;
+  document.getElementById('quiz-subject-label').style.color = info.color;
+  show('quiz');
+  renderQuestion();
+}
+
+function retryQuiz() {
+  startQuiz(currentSubject);
+}
+
+function renderQuestion() {
+  const questions = QUESTIONS[currentSubject];
+  const total = questions.length;
+  const q = questions[currentQ];
+  answered = false;
+
+  document.getElementById('quiz-progress-text').textContent = `Questão ${currentQ + 1} de ${total}`;
+  document.getElementById('progress-fill').style.width = `${(currentQ / total) * 100}%`;
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('feedback-msg').textContent = '';
+  document.getElementById('feedback-msg').className = 'feedback-msg';
+
+  const letters = ['A', 'B', 'C', 'D'];
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => handleAnswer(i);
+    opts.appendChild(btn);
+  });
+}
+
+function handleAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+
+  const questions = QUESTIONS[currentSubject];
+  const q = questions[currentQ];
+  const correct = q.answer;
+  const btns = document.querySelectorAll('.option-btn');
+
+  btns.forEach(b => b.disabled = true);
+
+  const feedback = document.getElementById('feedback-msg');
+
+  if (chosen === correct) {
+    btns[chosen].classList.add('correct');
+    score++;
+    feedback.textContent = '✓ Correto!';
+    feedback.className = 'feedback-msg correct';
+  } else {
+    btns[chosen].classList.add('wrong');
+    btns[correct].classList.add('correct');
+    feedback.textContent = `✗ Incorreto. A resposta certa é a alternativa ${['A','B','C','D'][correct]}.`;
+    feedback.className = 'feedback-msg wrong';
+  }
+
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ < questions.length) {
+      renderQuestion();
+    } else {
+      showResult();
+    }
+  }, 1600);
+}
+
+function showResult() {
+  const total = QUESTIONS[currentSubject].length;
+  const info = SUBJECT_INFO[currentSubject];
+  const pct = score / total;
+
+  let emoji, title;
+  if (pct === 1)       { emoji = '🏆'; title = 'Perfeito!'; }
+  else if (pct >= 0.75){ emoji = '🎉'; title = 'Muito bem!'; }
+  else if (pct >= 0.5) { emoji = '👍'; title = 'Bom trabalho!'; }
+  else                 { emoji = '📚'; title = 'Continue estudando!'; }
+
+  document.getElementById('result-emoji').textContent = emoji;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-score').textContent = `${score}/${total}`;
+  document.getElementById('result-label').textContent = `acertos em ${info.label}`;
+  document.getElementById('retry-btn').textContent = `Tentar novamente`;
+
+  show('result');
+}
+</script>
+</body>
+</html>
